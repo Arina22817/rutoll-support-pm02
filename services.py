@@ -38,6 +38,11 @@ class TicketService:
             raise ValueError("Поле ПВП должно быть заполнено")
         self.repository.update_ticket(ticket_id, **fields)
 
+    def delete_ticket(self, ticket_id: int) -> None:
+        if self.repository.get_ticket(ticket_id) is None:
+            raise ValueError("Заявка уже удалена или не существует")
+        self.repository.delete_ticket(ticket_id)
+
     def add_comment(self, ticket_id: int, author_id: int, text: str) -> int:
         if not text.strip():
             raise ValueError("Комментарий не может быть пустым")

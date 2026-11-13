@@ -42,6 +42,7 @@ class TicketCardWindow(tk.Toplevel):
         ttk.Button(actions, text="✎ Редактировать", command=self._edit).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="💬 Добавить комментарий", command=self._focus_comment).pack(side="left", padx=4)
         ttk.Button(actions, text="Назначить", command=self._assign).pack(side="left", padx=4)
+        ttk.Button(actions, text="Удалить", command=self._delete).pack(side="left", padx=4)
         ttk.Button(actions, text="Еще...", command=lambda: messagebox.showinfo("Дополнительные действия", "Дополнительные действия не требуются в учебной версии.", parent=self)).pack(side="left", padx=4)
 
         self.status_combo = ttk.Combobox(actions, state="readonly", width=15, values=list(self.app.status_map.keys()))
@@ -212,6 +213,28 @@ class TicketCardWindow(tk.Toplevel):
     def _edit(self) -> None:
         self.app.open_edit_ticket(self.ticket_id, on_saved=self._build)
 
+    def _delete(self) -> None:
+        ticket = self.app.repository.get_ticket(self.ticket_id)
+        if ticket is None:
+            messagebox.showwarning("Удаление заявки", "Заявка уже удалена.", parent=self)
+            self.destroy()
+            return
+        key = f"RS-{48000 + self.ticket_id}"
+        confirmed = messagebox.askyesno(
+            "Удаление заявки",
+            f"Удалить заявку {key}?\n\n{ticket['subject']}\n\nЭто действие нельзя отменить.",
+            parent=self,
+        )
+        if not confirmed:
+            return
+        try:
+            self.app.service.delete_ticket(self.ticket_id)
+        except ValueError as error:
+            messagebox.showerror("Ошибка", str(error), parent=self)
+            return
+        self.app.refresh_tickets()
+        self.destroy()
+
 
 class SupportApp(tk.Tk):
     """Главное окно системы учёта обращений технической поддержки."""
@@ -293,7 +316,8 @@ class SupportApp(tk.Tk):
         ttk.Button(tools, text="Создать", command=self.open_new_ticket).grid(row=1, column=2, padx=(16, 4), pady=(8, 0))
         ttk.Button(tools, text="Открыть карточку", command=self.open_ticket_card).grid(row=1, column=3, padx=4, pady=(8, 0))
         ttk.Button(tools, text="Назначить", command=self.assign_selected).grid(row=1, column=4, padx=4, pady=(8, 0))
-        tools.columnconfigure(5, weight=1)
+        ttk.Button(tools, text="Удалить", command=self.delete_selected).grid(row=1, column=5, padx=4, pady=(8, 0))
+        tools.columnconfigure(6, weight=1)
 
         table_frame = tk.Frame(self, bg="#ffffff", padx=12, pady=12)
         table_frame.pack(fill="both", expand=True, padx=18, pady=(0, 12))
@@ -349,6 +373,29 @@ class SupportApp(tk.Tk):
         ticket_id = self._selected_ticket_id()
         if ticket_id is not None:
             TicketCardWindow(self, ticket_id)
+
+    def delete_selected(self) -> None:
+        ticket_id = self._selected_ticket_id()
+        if ticket_id is None:
+            return
+        ticket = self.repository.get_ticket(ticket_id)
+        if ticket is None:
+            self.refresh_tickets()
+            return
+        key = f"RS-{48000 + ticket_id}"
+        confirmed = messagebox.askyesno(
+            "Удаление заявки",
+            f"Удалить заявку {key}?\n\n{ticket['subject']}\n\nЭто действие нельзя отменить.",
+            parent=self,
+        )
+        if not confirmed:
+            return
+        try:
+            self.service.delete_ticket(ticket_id)
+        except ValueError as error:
+            messagebox.showerror("Ошибка", str(error), parent=self)
+            return
+        self.refresh_tickets()
 
     def assign_selected(self) -> None:
         ticket_id = self._selected_ticket_id()

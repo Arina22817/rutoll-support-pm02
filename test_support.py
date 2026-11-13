@@ -105,6 +105,16 @@ class TicketServiceTests(unittest.TestCase):
         self.assertGreater(comment_id, 0)
         self.assertTrue(any(row["text"] == "Проверка комментария" for row in self.repository.list_comments(1)))
 
+    def test_delete_ticket_with_comments(self) -> None:
+        ticket_id = self.service.create_ticket(self._ticket("Заявка для удаления"))
+        self.service.add_comment(ticket_id, self.users["a.ignatieva"], "Комментарий будет удалён вместе с заявкой")
+        self.assertTrue(self.repository.list_comments(ticket_id))
+
+        self.service.delete_ticket(ticket_id)
+
+        self.assertIsNone(self.repository.get_ticket(ticket_id))
+        self.assertEqual(self.repository.list_comments(ticket_id), [])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

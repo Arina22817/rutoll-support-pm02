@@ -95,6 +95,10 @@ class TicketRepository:
             (status_id, self._now(), ticket_id),
         )
 
+    def delete_ticket(self, ticket_id: int) -> None:
+        """Удаляет заявку. Связанные комментарии удаляются каскадно в SQLite."""
+        self.database.execute("DELETE FROM tickets WHERE id = ?", (ticket_id,))
+
     def update_ticket(self, ticket_id: int, **fields) -> None:
         allowed = {
             "subject", "description", "category_id", "priority_id", "pvp", "lane_id",
